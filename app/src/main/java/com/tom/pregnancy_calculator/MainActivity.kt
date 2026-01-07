@@ -51,12 +51,12 @@ fun PregnancyDatePicker() {
 
     // Milestones definition (Condensed)
     val milestones = listOf(
-        "Estimated Due Date" to 280L,
         "Week Four" to 28L,
         "Week Five" to 35L,
         "Week Seven" to 49L,
         "Week Nine" to 63L,
-        "Week Eleven" to 77L
+        "Week Eleven" to 77L,
+        "Estimated Due Date" to 280L
     )
 
     Column(
@@ -115,8 +115,8 @@ fun PregnancyDatePicker() {
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
                             selectedDate = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(java.time.ZoneId.systemDefault())
-                                .toLocalDate()
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+
                         }
                         showDatePicker = false
                     }) { Text("OK") }
