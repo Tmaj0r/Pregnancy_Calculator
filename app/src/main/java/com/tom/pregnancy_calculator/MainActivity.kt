@@ -107,7 +107,6 @@ fun PregnancyDatePicker() {
         Button(onClick = { showDatePicker = true }) {
             Text("Select Date")
         }
-
         if (showDatePicker) {
             DatePickerDialog(
                 onDismissRequest = { showDatePicker = false },
