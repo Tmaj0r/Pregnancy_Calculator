@@ -2,11 +2,11 @@ package com.tom.pregnancy_calculator
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,7 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tom.pregnancy_calculator.ui.theme.Pregnancy_CalculatorTheme
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,7 +30,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+//TO-DO Add gestation. How many days are there from LMP to current date.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PregnancyDatePicker() {
@@ -35,24 +38,26 @@ fun PregnancyDatePicker() {
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
 
+    // Formatter for Month, Day, Year
+    val formatter = DateTimeFormatter.ofPattern("MMMM dd, yyyy")
+
     // Dropdown state
     var expanded by remember { mutableStateOf(false) }
-    val methods = listOf("LMP", "OPK", "TVOR", "D3", "D5")
+    val methods = listOf("LMP", "OPK", "TVOR/IUI", "Day 3", "Day 5")
     var selectedMethod by remember { mutableStateOf(methods[0]) }
 
     // Map the method to the day adjustment
     val adjustment = when (selectedMethod) {
         "OPK" -> -13L
-        "TVOR" -> -14L
-        "D3" -> -17L
-        "D5" -> -19L
-        else -> 0L // LMP is the baseline
+        "TVOR/IUI" -> -14L
+        "Day 3" -> -17L
+        "Day 5" -> -19L
+        else -> 0L
     }
 
-    // Milestones definition (Condensed)
     val milestones = listOf(
         "Week Four" to 28L,
-        "Week Five" to 35L,
+        "Week Five + Two Days" to 37L,
         "Week Seven" to 49L,
         "Week Nine" to 63L,
         "Week Eleven" to 77L,
@@ -68,15 +73,18 @@ fun PregnancyDatePicker() {
     ) {
         // 1. Display Results
         selectedDate?.let { date ->
-            // Adjust the date based on the method chosen
             val adjustedLmp = date.plusDays(adjustment)
 
             Text(text = "Calculation Basis: $selectedMethod", style = MaterialTheme.typography.labelLarge)
-            Text(text = "Effective LMP: $adjustedLmp", color = MaterialTheme.colorScheme.primary)
+
+            // Applied Formatter here
+            Text(text = "Effective LMP: ${adjustedLmp.format(formatter)}", color = MaterialTheme.colorScheme.primary)
 
             milestones.forEach { (label, days) ->
+                val milestoneDate = adjustedLmp.plusDays(days)
                 Text(
-                    text = "$label: ${adjustedLmp.plusDays(days)}",
+                    // Applied Formatter here
+                    text = "$label: ${milestoneDate.format(formatter)}",
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
@@ -114,9 +122,10 @@ fun PregnancyDatePicker() {
                 confirmButton = {
                     TextButton(onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            selectedDate = java.time.Instant.ofEpochMilli(millis)
-                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-
+                            // FIX: Use ZoneOffset.UTC to prevent the "one day off" bug
+                            selectedDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
                         }
                         showDatePicker = false
                     }) { Text("OK") }
