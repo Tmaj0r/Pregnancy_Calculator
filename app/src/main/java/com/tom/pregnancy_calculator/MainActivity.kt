@@ -6,12 +6,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import com.tom.pregnancy_calculator.ui.theme.Pregnancy_CalculatorTheme
 import java.time.Instant
@@ -34,41 +34,43 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PregnancyCalculatorScreen() {
-    // State Management
+    // --- STATE MANAGEMENT ---
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var selectedMethod by remember { mutableStateOf("LMP") }
     var showDatePicker by remember { mutableStateOf(false) }
 
     val methods = listOf("LMP", "OPK", "TVOR/IUI", "Day 3", "Day 5")
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 48.dp, start = 16.dp, end = 16.dp),
-        verticalArrangement = Arrangement.Bottom,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(16.dp)
     ) {
-        // 1. Results Area
-        selectedDate?.let { date ->
-            val effectiveLmp = calculateEffectiveLmp(date, selectedMethod)
-            PregnancyResultsDisplay(effectiveLmp, selectedMethod)
+        // --- UI COMPONENTS AT THE BOTTOM ---
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            selectedDate?.let { date ->
+                val effectiveLmp = calculateEffectiveLmp(date, selectedMethod)
+                PregnancyResultsDisplay(effectiveLmp, selectedMethod)
+            }
+
+            MethodSelector(
+                currentMethod = selectedMethod,
+                methods = methods,
+                onMethodSelected = { selectedMethod = it }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Button(onClick = { showDatePicker = true }) {
+                Text("Select Date") // Removed manual font size
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
         }
 
-        // 2. Method Selector (Dropdown)
-        MethodSelector(
-            currentMethod = selectedMethod,
-            methods = methods,
-            onMethodSelected = { selectedMethod = it }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 3. Date Selection Trigger
-        Button(onClick = { showDatePicker = true }) {
-            Text("Select Date")
-        }
-
-        // 4. Date Picker Dialog
         if (showDatePicker) {
             PregnancyDatePickerDialog(
                 onDateSelected = {
@@ -81,6 +83,16 @@ fun PregnancyCalculatorScreen() {
     }
 }
 
+fun calculateEffectiveLmp(inputDate: LocalDate, method: String): LocalDate {
+    val adjustment = when (method) {
+        "OPK" -> -13L
+        "TVOR/IUI" -> -14L
+        "Day 3" -> -17L
+        "Day 5" -> -19L
+        else -> 0L
+    }
+    return inputDate.plusDays(adjustment)
+}
 @Composable
 fun PregnancyResultsDisplay(effectiveLmp: LocalDate, method: String) {
     val formatter = DateTimeFormatter.ofPattern("MMMM dd, yyyy")
@@ -93,19 +105,22 @@ fun PregnancyResultsDisplay(effectiveLmp: LocalDate, method: String) {
         "Estimated Due Date" to 280L
     )
 
-    // Calculate Gestation (LMP to Today)
     val today = LocalDate.now()
     val totalDays = ChronoUnit.DAYS.between(effectiveLmp, today)
     val weeks = totalDays / 7
     val days = totalDays % 7
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(fontSize = 15.sp, text = "Calculation Basis: $method", style = MaterialTheme.typography.labelLarge)
-        Text(fontSize = 15.sp, text = "Effective LMP: ${effectiveLmp.format(formatter)}", color = MaterialTheme.colorScheme.primary)
+        AutoSizeText(
+            text = "Calculation Basis: $method",
+            style = MaterialTheme.typography.labelLarge
+        )
+        AutoSizeText(
+            text = "Effective LMP: ${effectiveLmp.format(formatter)}",
+            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary)
+        )
 
-        // Gestation Display
-        Text(
-            fontSize = 15.sp,
+        AutoSizeText(
             text = "Current Gestation: $weeks Weeks, $days Days",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(vertical = 8.dp)
@@ -115,8 +130,7 @@ fun PregnancyResultsDisplay(effectiveLmp: LocalDate, method: String) {
 
         milestones.forEach { (label, dayOffset) ->
             val milestoneDate = effectiveLmp.plusDays(dayOffset)
-            Text(
-                fontSize = 15.sp,
+            AutoSizeText(
                 text = "$label: ${milestoneDate.format(formatter)}",
                 modifier = Modifier.padding(top = 8.dp)
             )
@@ -126,17 +140,21 @@ fun PregnancyResultsDisplay(effectiveLmp: LocalDate, method: String) {
 }
 
 @Composable
-fun MethodSelector(currentMethod: String, methods: List<String>, onMethodSelected: (String) -> Unit) {
+fun MethodSelector(
+    currentMethod: String,
+    methods: List<String>,
+    onMethodSelected: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
         OutlinedButton(onClick = { expanded = true }) {
-            Text("Method: $currentMethod")
+            Text("Method: $currentMethod") // Manual size removed
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             methods.forEach { method ->
                 DropdownMenuItem(
-                    text = { Text(method) },
+                    text = { Text(method) }, // Manual size removed
                     onClick = {
                         onMethodSelected(method)
                         expanded = false
@@ -146,6 +164,35 @@ fun MethodSelector(currentMethod: String, methods: List<String>, onMethodSelecte
         }
     }
 }
+
+@Composable
+fun AutoSizeText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = LocalTextStyle.current
+) {
+    var scaledTextStyle by remember(text) { mutableStateOf(style) }
+    var readyToDraw by remember(text) { mutableStateOf(false) }
+
+    Text(
+        text = text,
+        modifier = modifier.fillMaxWidth(), // Apply modifier here
+        softWrap = false,
+        style = scaledTextStyle,
+        onTextLayout = { textLayoutResult ->
+            if (textLayoutResult.didOverflowWidth) {
+                // If text overflows, reduce font size
+                scaledTextStyle = scaledTextStyle.copy(fontSize = scaledTextStyle.fontSize * 0.9f)
+            } else {
+                // Once it fits, we are ready to draw
+                readyToDraw = true
+            }
+        },
+        // Hide the text until it's scaled correctly to prevent flickering
+        color = if (readyToDraw) style.color.copy(alpha = 1f) else style.color.copy(alpha = 0f)
+    )
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -170,18 +217,4 @@ fun PregnancyDatePickerDialog(onDateSelected: (LocalDate) -> Unit, onDismiss: ()
     ) {
         DatePicker(state = datePickerState)
     }
-}
-
-/**
- * Pure logic function to calculate the effective LMP based on method
- */
-fun calculateEffectiveLmp(inputDate: LocalDate, method: String): LocalDate {
-    val adjustment = when (method) {
-        "OPK" -> -13L
-        "TVOR/IUI" -> -14L
-        "Day 3" -> -17L
-        "Day 5" -> -19L
-        else -> 0L
-    }
-    return inputDate.plusDays(adjustment)
 }
