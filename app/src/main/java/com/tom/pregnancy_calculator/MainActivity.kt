@@ -93,6 +93,7 @@ fun calculateEffectiveLmp(inputDate: LocalDate, method: String): LocalDate {
     }
     return inputDate.plusDays(adjustment)
 }
+
 @Composable
 fun PregnancyResultsDisplay(effectiveLmp: LocalDate, method: String) {
     val formatter = DateTimeFormatter.ofPattern("MMMM dd, yyyy")
@@ -165,35 +166,6 @@ fun MethodSelector(
     }
 }
 
-@Composable
-fun AutoSizeText(
-    text: String,
-    modifier: Modifier = Modifier,
-    style: TextStyle = LocalTextStyle.current
-) {
-    var scaledTextStyle by remember(text) { mutableStateOf(style) }
-    var readyToDraw by remember(text) { mutableStateOf(false) }
-
-    Text(
-        text = text,
-        modifier = modifier.fillMaxWidth(), // Apply modifier here
-        softWrap = false,
-        style = scaledTextStyle,
-        onTextLayout = { textLayoutResult ->
-            if (textLayoutResult.didOverflowWidth) {
-                // If text overflows, reduce font size
-                scaledTextStyle = scaledTextStyle.copy(fontSize = scaledTextStyle.fontSize * 0.9f)
-            } else {
-                // Once it fits, we are ready to draw
-                readyToDraw = true
-            }
-        },
-        // Hide the text until it's scaled correctly to prevent flickering
-        color = if (readyToDraw) style.color.copy(alpha = 1f) else style.color.copy(alpha = 0f)
-    )
-}
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PregnancyDatePickerDialog(onDateSelected: (LocalDate) -> Unit, onDismiss: () -> Unit) {
@@ -217,4 +189,33 @@ fun PregnancyDatePickerDialog(onDateSelected: (LocalDate) -> Unit, onDismiss: ()
     ) {
         DatePicker(state = datePickerState)
     }
+}
+
+@Composable
+fun AutoSizeText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = LocalTextStyle.current
+) {
+    var scaledFontSize by remember(text) { mutableStateOf(style.fontSize) }
+    var readyToDraw by remember(text) { mutableStateOf(false) }
+
+    Text(
+        text = text,
+        modifier = modifier.fillMaxWidth(),
+        softWrap = false,
+        // Apply the original style but override the font size
+        style = style.copy(fontSize = scaledFontSize),
+        onTextLayout = { textLayoutResult ->
+            if (textLayoutResult.didOverflowWidth) {
+                // If it overflows, shrink the font size
+                scaledFontSize *= 0.9f
+            } else {
+                // Once it fits, mark it ready to draw
+                readyToDraw = true
+            }
+        },
+        // Use the original style's color but control visibility with alpha
+        color = style.color.copy(alpha = if (readyToDraw) 1f else 0f)
+    )
 }
